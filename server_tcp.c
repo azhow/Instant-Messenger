@@ -29,8 +29,11 @@ int main(int argc, char *argv[])
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(PORT);
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
-	bzero(&(serv_addr.sin_zero), 8);     
-    
+	bzero(&(serv_addr.sin_zero), 8);
+	
+	int sockoptval = 1;
+ 	/* allow immediate reuse of the port */
+	setsockopt(svc, SOL_SOCKET, SO_REUSEADDR, &sockoptval, sizeof(int));   
 	if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
 		printf("ERROR on binding");
 	
