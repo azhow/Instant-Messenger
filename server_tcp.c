@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 	
 	int sockoptval = 1;
  	/* allow immediate reuse of the port */
-	setsockopt(svc, SOL_SOCKET, SO_REUSEADDR, &sockoptval, sizeof(int));   
+	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &sockoptval, sizeof(int));   
 	if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
 		printf("ERROR on binding");
 	
