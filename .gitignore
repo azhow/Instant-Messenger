@@ -33,5 +33,5 @@
 
 /bin/*
 /obj/*
-*.users
+*.user
 /.vs/
