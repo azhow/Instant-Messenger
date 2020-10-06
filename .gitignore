@@ -35,3 +35,5 @@
 /Server/obj/*
 *.user
 /.vs/
+/Message/bin/*
+/Message/obj/*

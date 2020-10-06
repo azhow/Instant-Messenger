@@ -1,4 +1,5 @@
 #include "CServer.h"
+#include "CMessage.h"
 
 int main(int argc, char *argv[])
 {
