@@ -1,7 +1,6 @@
 #include "CMessage.h"
 
 #include <chrono>
-#include <string.h>
 
 CMessage::CMessage(const std::string& userID, const std::string& groupID, const std::string& messageData) :
     m_timestamp(std::chrono::seconds(std::time(NULL)).count()),
@@ -29,25 +28,7 @@ CMessage::~CMessage()
 CMessage::SMessage
 CMessage::serialize()
 {
-    // Serialized message header
-    SMessageHeader serializedMessageHeader;
-
-    // Serialized message
-    SMessage serializedMessage;
-
-    serializedMessageHeader.m_timestamp = m_timestamp;
-    // Copy user ID to header struct
-    strncpy(serializedMessageHeader.m_userID, m_userID.c_str(), m_cIDSize);
-    // Copy group ID to header
-    strncpy(serializedMessageHeader.m_groupID, m_groupID.c_str(), m_cIDSize);
-    serializedMessageHeader.m_messageSize = m_messageData.size();
-    serializedMessage.m_header = serializedMessageHeader;
-    // Allocate memory for the message data
-    serializedMessage.m_data = new char[m_messageData.size()];
-    // Copy message to struct
-    strncpy(serializedMessage.m_data, m_messageData.c_str(), m_messageData.size());
-
-    return serializedMessage;
+    return SMessage(m_timestamp, m_userID, m_groupID, m_messageData);
 }
 
 CMessage

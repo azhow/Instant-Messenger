@@ -9,6 +9,7 @@
 #include <thread>
 
 #include "CGenericMonitor.h"
+#include "CMessage.h"
 
 class CServer
 {
@@ -35,8 +36,16 @@ private:
 	// Threads handling client connections (it needs to be a monitor to avoid data race condition)
 	CGenericMonitor<std::vector<std::thread>> m_handlerThreads;
 
+	// Message buffer
+	CGenericMonitor<std::vector<CMessage>> m_messageBuffer;
+
 	// Handle connection with a client
 	void handleClientConnection(int clientSocket);
+
+	// Save message buffer to disk
+	void syncToDisk();
+
+	// Read group from disk
 };
 
 #endif

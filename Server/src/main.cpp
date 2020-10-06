@@ -4,10 +4,16 @@
 int main(int argc, char *argv[])
 {
 	// Server object
-	CServer cServer{ 10 };
+	//CServer cServer{ 10 };
 
 	// Wait for connections and handles them
-	cServer.waitForConnections();
+	//cServer.waitForConnections();
+
+	CMessage mess{ "patati", "patatá", "oi pateta!" };
+
+	CMessage::SMessage serial{ mess.serialize() };
+
+	CMessage deserial{ CMessage::deserialize(serial) };
 
 	return 0;
 }

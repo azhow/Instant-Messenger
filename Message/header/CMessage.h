@@ -4,6 +4,7 @@
 #include <ctime>
 #include <array>
 #include <cstdint>
+#include <string.h>
 
 class CMessage
 {
@@ -25,6 +26,25 @@ public:
     {
         SMessageHeader m_header;
         char* m_data;
+
+        // Struct constructor
+        SMessage(std::time_t timestamp, const std::string& userID, 
+            const std::string& groupID, const std::string& messageData)
+        {
+            m_header.m_timestamp = timestamp;
+            // Copy user ID to header struct
+            strncpy(m_header.m_userID, userID.c_str(), m_cIDSize);
+            // Copy group ID to header
+            strncpy(m_header.m_groupID, groupID.c_str(), m_cIDSize);
+            m_header.m_messageSize = messageData.size();
+            // Allocate memory for the message data
+            m_data = new char[messageData.size()];
+            // Copy message to struct
+            strncpy(m_data, messageData.c_str(), messageData.size());
+        }
+
+        // Struct destructor (deallocates string data)
+        ~SMessage() { delete[] m_data; }
     };
     
     // Message constructor which generates timestamp
