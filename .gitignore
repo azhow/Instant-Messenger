@@ -37,3 +37,5 @@
 /.vs/
 /Message/bin/*
 /Message/obj/*
+/Client/bin/*
+/Client/obj/*

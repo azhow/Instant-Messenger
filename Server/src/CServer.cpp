@@ -89,11 +89,22 @@ CServer::waitForConnections()
 void
 CServer::handleClientConnection(int clientSocket)
 {
+    // Message header from received message
+    CMessage::SMessageHeader messageHeader;
+
+    // Read message header
+    if (read(clientSocket, &messageHeader, sizeof(messageHeader)) == -1)
+    {
+        // Error
+    }
+
+    // Register user into the group
+
     // TODO when does the client connection closes?
     // Maybe we need to create a close message or timeout for the socket
     while (true)
     {
-        // TODO handle incoming message
+        // TODO handle incoming messages
     }
 
     // Close client socket

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <vector>
 #include <thread>
+#include <unordered_map>
 
 #include "CGenericMonitor.h"
 #include "CMessage.h"
@@ -38,6 +39,9 @@ private:
 
 	// Message buffer
 	CGenericMonitor<std::vector<CMessage>> m_messageBuffer;
+
+	// Groups are ID -> vector of sockets
+	CGenericMonitor<std::unordered_map<std::string, std::vector<int>>> m_groups;
 
 	// Handle connection with a client
 	void handleClientConnection(int clientSocket);
