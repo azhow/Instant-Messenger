@@ -49,7 +49,11 @@ private:
 	// Save message buffer to disk
 	void syncToDisk();
 
+	// Register group (either reads from disk if already existent or creates a whole new group)
+	void registerGroup(std::string_view groupID);
+
 	// Read group from disk
+
 };
 
 #endif

@@ -98,7 +98,16 @@ CServer::handleClientConnection(int clientSocket)
         // Error
     }
 
+    // Check if group is already instantiated
+    if (auto groupIt{ m_groups->find(messageHeader.m_groupID) };
+        groupIt == m_groups->end())
+    {
+        // Register group
+        registerGroup(messageHeader.m_groupID);
+    }
+
     // Register user into the group
+    m_groups->at(messageHeader.m_groupID).push_back(clientSocket);
 
     // TODO when does the client connection closes?
     // Maybe we need to create a close message or timeout for the socket

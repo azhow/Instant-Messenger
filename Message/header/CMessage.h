@@ -62,6 +62,9 @@ public:
     // Deserialize
     static CMessage deserialize(const SMessage& message);
 
+    // Creates login message for user into a group
+    static CMessage loginMessage(std::string_view userID, std::string_view groupID);
+
 private:
     // UNIX timestamp of the message
     std::time_t m_timestamp;
