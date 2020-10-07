@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <strings.h>
 #include <exception>
+#include <algorithm>
+#include <fstream>
 
 CServer::CServer(std::size_t numberOfMsgToRetrieve) :
     m_nMessagesToRetrieve(numberOfMsgToRetrieve),
@@ -103,7 +105,17 @@ CServer::handleClientConnection(int clientSocket)
         groupIt == m_groups->end())
     {
         // Register group
-        //registerGroup(messageHeader.m_groupID);
+        if (auto messageVec{ registerGroup(messageHeader.m_groupID) }; !messageVec.empty())
+        {
+            std::for_each(messageVec.begin(), messageVec.end(), [&](const CMessage& message)
+                {
+                    // Serialize message
+                    const CMessage::SMessage cSerializedMessage{ message.serialize() };
+
+                    // Send message to client
+                    write(clientSocket, &cSerializedMessage, sizeof(CMessage::SMessageHeader) + cSerializedMessage.m_header.m_messageSize);
+                });
+        }
     }
 
     // Register user into the group
@@ -118,4 +130,53 @@ CServer::handleClientConnection(int clientSocket)
 
     // Close client socket
     close(clientSocket);
+}
+
+std::vector<CMessage>
+CServer::registerGroup(const std::string& groupID)
+{
+    // Last messages from group
+    std::vector<CMessage> lastNMessagesFromGroup{};
+
+    // Path to the group's file
+    std::filesystem::path groupFilePath{ std::filesystem::current_path() };
+    // Groups folder
+    groupFilePath.append("Groups");
+    groupFilePath.append(groupID + ".msg");
+
+    // Search in the disk if there's an existing group file
+    if (std::filesystem::is_regular_file(groupFilePath))
+    {
+        // If there's a file, we should retrieve the last N² messages from that file 
+        // starting from the end (the file has the messages in a chronological order)
+        lastNMessagesFromGroup = retrieveLastNMessages(groupFilePath);
+    }
+
+    // Add groupID to the map
+    m_groups->insert({ groupID, std::vector<int>{} });
+
+    return lastNMessagesFromGroup;
+}
+
+std::vector<CMessage> 
+CServer::retrieveLastNMessages(const std::filesystem::path& groupFilePath) const
+{
+    // Messages read from file
+    std::vector<CMessage> messagesReadFromFile{};
+
+    // Group file
+    std::ifstream fileStream(groupFilePath, std::ios::out | std::ios::binary);
+    
+    for (int i = 0; i < 10; i++)
+    {
+        CMessage::SMessageHeader header;
+        fileStream.read((char*)&header, sizeof(CMessage::SMessageHeader));
+        CMessage::SMessage message{ header };
+        fileStream.read(message.m_data, header.m_messageSize);
+        messagesReadFromFile.push_back(CMessage::deserialize(message));
+    }
+
+    fileStream.close();
+
+    return messagesReadFromFile;
 }

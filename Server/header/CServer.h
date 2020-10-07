@@ -8,6 +8,7 @@
 #include <vector>
 #include <thread>
 #include <unordered_map>
+#include <filesystem>
 
 #include "CGenericMonitor.h"
 #include "CMessage.h"
@@ -50,10 +51,11 @@ private:
 	void syncToDisk();
 
 	// Register group (either reads from disk if already existent or creates a whole new group)
-	void registerGroup(std::string_view groupID);
+	// Returns the last N² messages if there's already a file for that group
+	std::vector<CMessage> registerGroup(const std::string& groupID);
 
-	// Read group from disk
-
+	// Read last N messages from group file on the disk
+	std::vector<CMessage> retrieveLastNMessages(const std::filesystem::path& groupFilePath) const;
 };
 
 #endif

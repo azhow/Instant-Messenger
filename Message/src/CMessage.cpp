@@ -26,7 +26,7 @@ CMessage::~CMessage()
 }
 
 CMessage::SMessage
-CMessage::serialize()
+CMessage::serialize() const
 {
     return SMessage(m_timestamp, m_userID, m_groupID, m_messageData);
 }

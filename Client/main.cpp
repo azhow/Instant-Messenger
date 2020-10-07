@@ -7,6 +7,8 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 #include <string.h>
+#include <fstream>
+#include <iostream>
 
 #include "CMessage.h"
 
@@ -14,6 +16,36 @@
 
 int main(int argc, char* argv[])
 {
+    // Write dummy group file
+    {
+        std::ofstream wf("/home/lain/Groups/Patata.msg", std::ios::out | std::ios::binary);
+        if (!wf) {
+            std::cout << "Cannot open file!" << std::endl;
+            return 1;
+        }
+
+        for (std::size_t idx{ 0 }; idx < 10; idx++)
+        {
+
+            // HOW TO SEND MESSAGE
+            std::string messData{ "message number: " + std::to_string(idx) };
+            CMessage message{ "Patati", "Patata", messData };
+            CMessage::SMessage m{ message.serialize() };
+            // Read header
+            wf.write((char*) &m, sizeof(CMessage::SMessageHeader));
+            // Read message data
+            wf.write(m.m_data, m.m_header.m_messageSize);
+        }
+
+        wf.close();
+        if (!wf.good()) {
+            std::cout << "Error occurred at writing time!" << std::endl;
+            return 1;
+        }
+    }
+
+
+
     int sockfd, n;
     struct sockaddr_in serv_addr;
     struct hostent* server;

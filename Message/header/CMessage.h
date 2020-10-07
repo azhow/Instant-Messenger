@@ -16,9 +16,9 @@ public:
     struct SMessageHeader
     {
         std::time_t m_timestamp;
+        std::uint64_t m_messageSize;
         char m_userID[m_cIDSize] = { 0 };
         char m_groupID[m_cIDSize] = { 0 };
-        std::uint64_t m_messageSize;
     };
 
     // Message struct to be serialized
@@ -43,6 +43,14 @@ public:
             strncpy(m_data, messageData.c_str(), messageData.size());
         }
 
+        // Struct constructor
+        SMessage(SMessageHeader& header)
+        {
+            m_header = header;
+            // Allocate memory for the message data
+            m_data = new char[m_header.m_messageSize];
+        }
+
         // Struct destructor (deallocates string data)
         ~SMessage() { delete[] m_data; }
     };
@@ -57,7 +65,7 @@ public:
     ~CMessage();
 
     // Serialize
-    SMessage serialize();
+    SMessage serialize() const;
 
     // Deserialize
     static CMessage deserialize(const SMessage& message);
