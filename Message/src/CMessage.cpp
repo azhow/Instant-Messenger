@@ -39,7 +39,7 @@ CMessage::deserialize(const CMessage::SMessage& message)
 }
 
 CMessage
-CMessage::loginMessage(std::string_view userID, std::string_view groupID)
+CMessage::loginMessage(const std::string& userID, const std::string& groupID)
 {
-    return CMessage(std::string(userID), std::string(groupID), "");
+    return CMessage(userID, groupID, "");
 }

@@ -18,8 +18,6 @@ int main(int argc, char* argv[])
     struct sockaddr_in serv_addr;
     struct hostent* server;
 
-    char buffer[256];
-
     server = gethostbyname("localhost");
     if (server == NULL) {
         fprintf(stderr, "ERROR, no such host\n");
@@ -37,10 +35,11 @@ int main(int argc, char* argv[])
     if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
         printf("ERROR connecting\n");
 
-    CMessage::SMessage mess{0, "Patati", "Patata", ""};
+    CMessage loginMessage{ CMessage::loginMessage("Patati", "Patata") };
+    CMessage::SMessage serialized{ loginMessage.serialize() };
 
     // Write message into the socket
-    if (write(sockfd, &mess, sizeof(CMessage::SMessage)) == -1)
+    if (write(sockfd, &serialized, sizeof(CMessage::SMessage)) == -1)
     {
         // error
     }

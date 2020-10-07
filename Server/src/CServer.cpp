@@ -103,7 +103,7 @@ CServer::handleClientConnection(int clientSocket)
         groupIt == m_groups->end())
     {
         // Register group
-        registerGroup(messageHeader.m_groupID);
+        //registerGroup(messageHeader.m_groupID);
     }
 
     // Register user into the group

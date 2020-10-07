@@ -16,8 +16,8 @@ public:
     struct SMessageHeader
     {
         std::time_t m_timestamp;
-        char m_userID[m_cIDSize];
-        char m_groupID[m_cIDSize];
+        char m_userID[m_cIDSize] = { 0 };
+        char m_groupID[m_cIDSize] = { 0 };
         std::uint64_t m_messageSize;
     };
 
@@ -63,7 +63,7 @@ public:
     static CMessage deserialize(const SMessage& message);
 
     // Creates login message for user into a group
-    static CMessage loginMessage(std::string_view userID, std::string_view groupID);
+    static CMessage loginMessage(const std::string& userID, const std::string& groupID);
 
 private:
     // UNIX timestamp of the message
