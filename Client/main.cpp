@@ -24,17 +24,11 @@ int main(int argc, char* argv[])
             return 1;
         }
 
-        for (std::size_t idx{ 0 }; idx < 10; idx++)
+        for (std::size_t idx{ 0 }; idx < 1000; idx++)
         {
-
-            // HOW TO SEND MESSAGE
             std::string messData{ "message number: " + std::to_string(idx) };
             CMessage message{ "Patati", "Patata", messData };
-            CMessage::SMessage m{ message.serialize() };
-            // Read header
-            wf.write((char*) &m, sizeof(CMessage::SMessageHeader));
-            // Read message data
-            wf.write(m.m_data, m.m_header.m_messageSize);
+            message.writeToDisk(wf);
         }
 
         wf.close();
@@ -46,7 +40,7 @@ int main(int argc, char* argv[])
 
 
 
-    int sockfd, n;
+    int sockfd;
     struct sockaddr_in serv_addr;
     struct hostent* server;
 
@@ -67,14 +61,8 @@ int main(int argc, char* argv[])
     if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
         printf("ERROR connecting\n");
 
-    CMessage loginMessage{ CMessage::loginMessage("Patati", "Patata") };
-    CMessage::SMessage serialized{ loginMessage.serialize() };
-
-    // Write message into the socket
-    if (write(sockfd, &serialized, sizeof(CMessage::SMessage)) == -1)
-    {
-        // error
-    }
+    // Login in the server
+    CMessage::sendLoginMessage(sockfd, "Patati", "Patata");
 
     ///* read from the socket */
     //n = read(sockfd, buffer, 256);

@@ -91,52 +91,64 @@ CServer::waitForConnections()
 void
 CServer::handleClientConnection(int clientSocket)
 {
-    // Message header from received message
-    CMessage::SMessageHeader messageHeader;
-
-    // Read message header
-    if (read(clientSocket, &messageHeader, sizeof(messageHeader)) == -1)
+    // Login logic
+    // TODO need to be a separated method with more logic, such as the maximum number of sessions per user
     {
-        // Error
-    }
+        // Read login message
+        const CMessage loginMessage{ CMessage::readMessageFromSocket(clientSocket) };
 
-    // Check if group is already instantiated
-    if (auto groupIt{ m_groups->find(messageHeader.m_groupID) };
-        groupIt == m_groups->end())
-    {
-        // Register group
-        if (auto messageVec{ registerGroup(messageHeader.m_groupID) }; !messageVec.empty())
+        // Check if group is already instantiated
+        if (auto groupIt{ m_groups->find(loginMessage.getGroupID()) };
+            groupIt == m_groups->end())
         {
-            std::for_each(messageVec.begin(), messageVec.end(), [&](const CMessage& message)
+            // Register group
+            if (auto messageVec{ registerGroup(loginMessage.getGroupID()) }; !messageVec.empty())
+            {
+                // Send all messages to the client
+                for (const auto& message : messageVec)
                 {
-                    // Serialize message
-                    const CMessage::SMessage cSerializedMessage{ message.serialize() };
-
-                    // Send message to client
-                    write(clientSocket, &cSerializedMessage, sizeof(CMessage::SMessageHeader) + cSerializedMessage.m_header.m_messageSize);
-                });
+                    message.sendMessageToSocket(clientSocket);
+                }
+            }
         }
+
+        // Register user into the group
+        m_groups->at(loginMessage.getGroupID()).push_back(clientSocket);
     }
 
-    // Register user into the group
-    m_groups->at(messageHeader.m_groupID).push_back(clientSocket);
+    // Has the connection been closed?
+    bool isConnectionClosed{ false };
 
-    // TODO when does the client connection closes?
     // Maybe we need to create a close message or timeout for the socket
-    while (true)
+    while (!isConnectionClosed)
     {
-        // TODO handle incoming messages
+        // Listen for incoming messages from user
+        // Read message header
+        const CMessage cReceivedMessage{ CMessage::readMessageFromSocket(clientSocket) };
+
+        // Check if the connection was closed
+        isConnectionClosed = cReceivedMessage.isMessageEmpty();
+
+        if (!isConnectionClosed)
+        {
+            // Broadcast message
+            for (const auto& user : m_groups->at(cReceivedMessage.getGroupID()))
+            {
+                // Send message to client
+                cReceivedMessage.sendMessageToSocket(user);
+            }
+        }
     }
 
     // Close client socket
     close(clientSocket);
 }
 
-std::vector<CMessage>
+std::list<CMessage>
 CServer::registerGroup(const std::string& groupID)
 {
     // Last messages from group
-    std::vector<CMessage> lastNMessagesFromGroup{};
+    std::list<CMessage> lastNMessagesFromGroup{};
 
     // Path to the group's file
     std::filesystem::path groupFilePath{ std::filesystem::current_path() };
@@ -158,22 +170,32 @@ CServer::registerGroup(const std::string& groupID)
     return lastNMessagesFromGroup;
 }
 
-std::vector<CMessage> 
+std::list<CMessage>
 CServer::retrieveLastNMessages(const std::filesystem::path& groupFilePath) const
 {
     // Messages read from file
-    std::vector<CMessage> messagesReadFromFile{};
+    std::list<CMessage> messagesReadFromFile{};
 
     // Group file
     std::ifstream fileStream(groupFilePath, std::ios::out | std::ios::binary);
     
-    for (int i = 0; i < 10; i++)
+    // Check if successfully opened the file
+    if (fileStream.good())
     {
-        CMessage::SMessageHeader header;
-        fileStream.read((char*)&header, sizeof(CMessage::SMessageHeader));
-        CMessage::SMessage message{ header };
-        fileStream.read(message.m_data, header.m_messageSize);
-        messagesReadFromFile.push_back(CMessage::deserialize(message));
+        // Read all messages from file
+        while (!fileStream.eof())
+        {
+            messagesReadFromFile.push_back(CMessage::readMessageFromDisk(fileStream));
+        }
+
+        // Remove last message (its garbage)
+        messagesReadFromFile.pop_back();
+
+        // Remove first messages
+        while (messagesReadFromFile.size() > m_nMessagesToRetrieve * m_nMessagesToRetrieve)
+        {
+            messagesReadFromFile.pop_front();
+        }
     }
 
     fileStream.close();

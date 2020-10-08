@@ -1,5 +1,6 @@
 #include "CMessage.h"
 
+#include <unistd.h>
 #include <chrono>
 
 CMessage::CMessage(const std::string& userID, const std::string& groupID, const std::string& messageData) :
@@ -34,12 +35,86 @@ CMessage::serialize() const
 CMessage
 CMessage::deserialize(const CMessage::SMessage& message)
 {
-    return CMessage(message.m_header.m_timestamp, message.m_header.m_userID, 
+    return CMessage(message.m_header.m_timestamp, message.m_header.m_userID,
         message.m_header.m_groupID, message.m_data);
 }
 
-CMessage
-CMessage::loginMessage(const std::string& userID, const std::string& groupID)
+bool
+CMessage::sendLoginMessage(int serverSocketFD, const std::string& userID, const std::string& groupID)
 {
-    return CMessage(userID, groupID, "");
+    // Return value
+    bool retVal{ false };
+
+    // Login message
+    CMessage loginMessage{ CMessage(userID, groupID, "") };
+    CMessage::SMessage serialized{ loginMessage.serialize() };
+
+    // Write message into the server socket
+    retVal = write(serverSocketFD, &serialized, sizeof(CMessage::SMessage)) > 0;
+
+    return retVal;
+}
+
+bool
+CMessage::sendMessageToSocket(int socketFD) const
+{
+    // Return value
+    bool retVal{ false };
+
+    // This message serialized
+    SMessage serializedMessage{ serialize() };
+
+    // Send message to client
+    retVal = write(socketFD, &serializedMessage.m_header, sizeof(CMessage::SMessageHeader)) > 0;
+    retVal = retVal && (write(socketFD, serializedMessage.m_data, serializedMessage.m_header.m_messageSize) > 0);
+
+    return retVal;
+}
+
+CMessage
+CMessage::readMessageFromSocket(int socketFD)
+{
+    // Message header from received message
+    SMessageHeader messageHeader;
+
+    // Read message header
+    read(socketFD, &messageHeader, sizeof(SMessageHeader));
+
+    // Parse message data
+    SMessage message{ messageHeader };
+    read(socketFD, message.m_data, messageHeader.m_messageSize);
+
+    return deserialize(message);
+}
+
+bool
+CMessage::writeToDisk(std::ofstream& outputFile) const
+{
+    // Return value
+    bool retVal{ false };
+
+    // Serializes message
+    CMessage::SMessage serializedMessage{ serialize() };
+    // Read header
+    outputFile.write((char*)&serializedMessage, sizeof(CMessage::SMessageHeader));
+    retVal = outputFile.good();
+    // Read message data
+    outputFile.write(serializedMessage.m_data, serializedMessage.m_header.m_messageSize);
+    retVal = retVal & outputFile.good();
+
+    return retVal;
+}
+
+CMessage
+CMessage::readMessageFromDisk(std::ifstream& inputFile)
+{
+    // First reads the message header to get the message size
+    SMessageHeader header;
+    inputFile.read((char*)&header, sizeof(SMessageHeader));
+    // Then create the message and read the message data
+    SMessage message{ header };
+    inputFile.read(message.m_data, header.m_messageSize);
+    
+    // Deserialize message
+    return deserialize(message);
 }

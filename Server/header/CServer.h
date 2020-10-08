@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <cstdint>
 #include <vector>
+#include <list>
 #include <thread>
 #include <unordered_map>
 #include <filesystem>
@@ -52,10 +53,10 @@ private:
 
 	// Register group (either reads from disk if already existent or creates a whole new group)
 	// Returns the last N² messages if there's already a file for that group
-	std::vector<CMessage> registerGroup(const std::string& groupID);
+	std::list<CMessage> registerGroup(const std::string& groupID);
 
 	// Read last N messages from group file on the disk
-	std::vector<CMessage> retrieveLastNMessages(const std::filesystem::path& groupFilePath) const;
+	std::list<CMessage> retrieveLastNMessages(const std::filesystem::path& groupFilePath) const;
 };
 
 #endif
