@@ -50,7 +50,7 @@ CMessage::sendLoginMessage(int serverSocketFD, const std::string& userID, const 
     CMessage::SMessage serialized{ loginMessage.serialize() };
 
     // Write message into the server socket
-    retVal = write(serverSocketFD, &serialized, sizeof(CMessage::SMessage)) > 0;
+    retVal = write(serverSocketFD, &serialized.m_header, sizeof(CMessage::SMessageHeader)) > 0;
 
     return retVal;
 }
@@ -72,17 +72,18 @@ CMessage::sendMessageToSocket(int socketFD) const
 }
 
 CMessage
-CMessage::readMessageFromSocket(int socketFD)
+CMessage::readMessageFromSocket(int socketFD, bool& isConnectionClosed)
 {
     // Message header from received message
     SMessageHeader messageHeader;
 
     // Read message header
-    read(socketFD, &messageHeader, sizeof(SMessageHeader));
+    isConnectionClosed = read(socketFD, &messageHeader, sizeof(SMessageHeader)) == 0;
 
     // Parse message data
     SMessage message{ messageHeader };
-    read(socketFD, message.m_data, messageHeader.m_messageSize);
+    isConnectionClosed = isConnectionClosed || (
+        read(socketFD, message.m_data, messageHeader.m_messageSize) == 0);
 
     return deserialize(message);
 }

@@ -26,7 +26,7 @@ public:
     bool sendMessageToSocket(int socketFD) const;
 
     // Read message from socket
-    static CMessage readMessageFromSocket(int socketFD);
+    static CMessage readMessageFromSocket(int socketFD, bool& isConnectionClosed);
 
     // Write message to disk on a opened existing file
     bool writeToDisk(std::ofstream& outputFile) const;
@@ -42,6 +42,9 @@ public:
 
     // Get groupID
     inline std::string getGroupID() const { return m_groupID; };
+
+    // Get messageData
+    inline std::string getMessageData() const { return m_messageData; };
 
 private:
     // UNIX timestamp of the message
@@ -122,7 +125,6 @@ private:
 
     // Deserialize
     static CMessage deserialize(const SMessage& message);
-
 };
 
 #endif // !CMessage_h
