@@ -119,3 +119,11 @@ CMessage::readMessageFromDisk(std::ifstream& inputFile)
     // Deserialize message
     return deserialize(message);
 }
+
+std::string 
+CMessage::getPrintableMessage() const
+{
+    std::string retVal{ "" };
+
+    return retVal;
+}

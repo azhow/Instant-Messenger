@@ -46,6 +46,9 @@ public:
     // Get messageData
     inline std::string getMessageData() const { return m_messageData; };
 
+    // Transform message into a printable pretty using timestamp, userID and messageData as a string
+    std::string getPrintableMessage() const;
+
 private:
     // UNIX timestamp of the message
     std::time_t m_timestamp;

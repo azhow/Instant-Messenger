@@ -30,7 +30,7 @@ CServer::CServer(std::size_t numberOfMsgToRetrieve) :
 
     // Option value for option level
     int optionValue{ 0 };
-
+    
     // Set server socket to allow immediate reuse of the port
     if (setsockopt(m_serverSocket, SOL_SOCKET, SO_REUSEADDR, &optionValue, sizeof(int)) == 0)
     {
@@ -94,8 +94,10 @@ CServer::handleClientConnection(int clientSocket)
     // Login logic
     // TODO need to be a separated method with more logic, such as the maximum number of sessions per user
     {
+        bool isConnectionClosed{ false };
+
         // Read login message
-        const CMessage loginMessage{ CMessage::readMessageFromSocket(clientSocket) };
+        const CMessage loginMessage{ CMessage::readMessageFromSocket(clientSocket, isConnectionClosed) };
 
         // Check if group is already instantiated
         if (auto groupIt{ m_groups->find(loginMessage.getGroupID()) };
@@ -114,6 +116,17 @@ CServer::handleClientConnection(int clientSocket)
 
         // Register user into the group
         m_groups->at(loginMessage.getGroupID()).push_back(clientSocket);
+
+        // Braoadcast user login
+        const CMessage cBroadcastMessage{ loginMessage.getUserID(), loginMessage.getGroupID(),
+            loginMessage.getUserID() + " has connected" };
+
+        // Broadcast message
+        for (const auto& user : m_groups->at(cBroadcastMessage.getGroupID()))
+        {
+            // Send message to client
+            cBroadcastMessage.sendMessageToSocket(user);
+        }
     }
 
     // Has the connection been closed?
@@ -124,10 +137,7 @@ CServer::handleClientConnection(int clientSocket)
     {
         // Listen for incoming messages from user
         // Read message header
-        const CMessage cReceivedMessage{ CMessage::readMessageFromSocket(clientSocket) };
-
-        // Check if the connection was closed
-        isConnectionClosed = cReceivedMessage.isMessageEmpty();
+        const CMessage cReceivedMessage{ CMessage::readMessageFromSocket(clientSocket, isConnectionClosed) };
 
         if (!isConnectionClosed)
         {
@@ -139,6 +149,9 @@ CServer::handleClientConnection(int clientSocket)
             }
         }
     }
+
+    // Remove client from group
+    // TODO
 
     // Close client socket
     close(clientSocket);
