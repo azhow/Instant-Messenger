@@ -1,13 +1,23 @@
 #include "CServer.h"
 #include "CMessage.h"
 
+#include <iostream>
+
 int main(int argc, char *argv[])
 {
-	// Server object
-	CServer cServer{ 10 };
+	try 
+	{
+		// Server object
+		CServer cServer{ 10 };
 
-	// Wait for connections and handles them
-	cServer.waitForConnections();
+		// Wait for connections and handles them
+		cServer.waitForConnections();
+	}
+	catch (std::exception& e)
+	{
+		// Print exception message
+		std::cout << e.what() << std::endl;
+	}
 
 	//CMessage mess{ "patati", "patatá", "oi pateta!" };
 
