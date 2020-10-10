@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 {
     //// Write dummy group file
     //{
-    //    std::ofstream wf("/home/adpeiter/Groups/Patata.msg", std::ios::out | std::ios::binary);
+    //    std::ofstream wf("/home/lain/Groups/chaves.msg", std::ios::out | std::ios::binary);
     //    if (!wf) {
     //        std::cout << "Cannot open file!" << std::endl;
     //        return 1;
@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
     //    for (std::size_t idx{ 0 }; idx < 1000; idx++)
     //    {
     //        std::string messData{ "message number: " + std::to_string(idx) };
-    //        CMessage message{ "Patati", "Patata", messData };
+    //        CMessage message{ "gordo", "chaves", messData };
     //        message.writeToDisk(wf);
     //    }
 

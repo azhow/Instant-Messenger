@@ -103,14 +103,17 @@ CServer::handleClientConnection(int clientSocket)
         if (auto groupIt{ m_groups->find(loginMessage.getGroupID()) };
             groupIt == m_groups->end())
         {
-            // Register group
-            if (auto messageVec{ registerGroup(loginMessage.getGroupID()) }; !messageVec.empty())
+            // Add groupID to the map
+            m_groups->insert({ loginMessage.getGroupID(), std::vector<int>{} });
+        }
+
+        // Get last messages from disk
+        if (auto messageList{ retrieveLastNMessages(loginMessage.getGroupID()) }; !messageList.empty())
+        {
+            // Send all messages to the client
+            for (const auto& message : messageList)
             {
-                // Send all messages to the client
-                for (const auto& message : messageVec)
-                {
-                    message.sendMessageToSocket(clientSocket);
-                }
+                message.sendMessageToSocket(clientSocket);
             }
         }
 
@@ -158,7 +161,7 @@ CServer::handleClientConnection(int clientSocket)
 }
 
 std::list<CMessage>
-CServer::registerGroup(const std::string& groupID)
+CServer::retrieveLastNMessages(const std::string& groupID) const
 {
     // Last messages from group
     std::list<CMessage> lastNMessagesFromGroup{};
@@ -172,46 +175,30 @@ CServer::registerGroup(const std::string& groupID)
     // Search in the disk if there's an existing group file
     if (std::filesystem::is_regular_file(groupFilePath))
     {
-        // If there's a file, we should retrieve the last N² messages from that file 
-        // starting from the end (the file has the messages in a chronological order)
-        lastNMessagesFromGroup = retrieveLastNMessages(groupFilePath);
-    }
+        // Group file
+        std::ifstream fileStream(groupFilePath, std::ios::out | std::ios::binary);
 
-    // Add groupID to the map
-    m_groups->insert({ groupID, std::vector<int>{} });
+        // Check if successfully opened the file
+        if (fileStream.good())
+        {
+            // Read all messages from file
+            while (!fileStream.eof())
+            {
+                lastNMessagesFromGroup.push_back(CMessage::readMessageFromDisk(fileStream));
+            }
+
+            // Remove last message (its garbage)
+            lastNMessagesFromGroup.pop_back();
+
+            // Remove first messages
+            while (lastNMessagesFromGroup.size() > m_nMessagesToRetrieve * m_nMessagesToRetrieve)
+            {
+                lastNMessagesFromGroup.pop_front();
+            }
+        }
+
+        fileStream.close();
+    }
 
     return lastNMessagesFromGroup;
-}
-
-std::list<CMessage>
-CServer::retrieveLastNMessages(const std::filesystem::path& groupFilePath) const
-{
-    // Messages read from file
-    std::list<CMessage> messagesReadFromFile{};
-
-    // Group file
-    std::ifstream fileStream(groupFilePath, std::ios::out | std::ios::binary);
-    
-    // Check if successfully opened the file
-    if (fileStream.good())
-    {
-        // Read all messages from file
-        while (!fileStream.eof())
-        {
-            messagesReadFromFile.push_back(CMessage::readMessageFromDisk(fileStream));
-        }
-
-        // Remove last message (its garbage)
-        messagesReadFromFile.pop_back();
-
-        // Remove first messages
-        while (messagesReadFromFile.size() > m_nMessagesToRetrieve * m_nMessagesToRetrieve)
-        {
-            messagesReadFromFile.pop_front();
-        }
-    }
-
-    fileStream.close();
-
-    return messagesReadFromFile;
 }

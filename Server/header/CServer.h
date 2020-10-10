@@ -51,12 +51,8 @@ private:
 	// Save message buffer to disk
 	void syncToDisk();
 
-	// Register group (either reads from disk if already existent or creates a whole new group)
 	// Returns the last N² messages if there's already a file for that group
-	std::list<CMessage> registerGroup(const std::string& groupID);
-
-	// Read last N messages from group file on the disk
-	std::list<CMessage> retrieveLastNMessages(const std::filesystem::path& groupFilePath) const;
+	std::list<CMessage> retrieveLastNMessages(const std::string& groupID) const;
 };
 
 #endif
