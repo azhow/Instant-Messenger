@@ -85,9 +85,11 @@
   <ItemGroup>
     <ClInclude Include="header\CGenericMonitor.h" />
     <ClInclude Include="header\CServer.h" />
+    <ClInclude Include="header\CUser.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\CServer.cpp" />
+    <ClCompile Include="src\CUser.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -13,6 +13,7 @@
 
 #include "CGenericMonitor.h"
 #include "CMessage.h"
+#include "CUser.h"
 
 class CServer
 {
@@ -36,6 +37,9 @@ private:
 	// Server port
 	std::uint16_t m_port;
 
+	// Group folder path
+	std::filesystem::path m_groupFolderPath;
+
 	// Threads handling client connections (it needs to be a monitor to avoid data race condition)
 	CGenericMonitor<std::vector<std::thread>> m_handlerThreads;
 
@@ -45,6 +49,9 @@ private:
 	// Groups are ID -> vector of sockets
 	CGenericMonitor<std::unordered_map<std::string, std::vector<int>>> m_groups;
 
+	// Vector of users
+	std::vector <std::shared_ptr<CUser>> m_users;
+
 	// Handle connection with a client
 	void handleClientConnection(int clientSocket);
 
@@ -53,6 +60,12 @@ private:
 
 	// Returns the last N² messages if there's already a file for that group
 	std::list<CMessage> retrieveLastNMessages(const std::string& groupID) const;
+
+	// Login a user into the server
+	std::pair<std::shared_ptr<CUser>, std::string> login(int clientSocket);
+
+	// Removes user from a group
+	void removeFromGroup(std::shared_ptr<CUser> currentUser, const std::string& currentGroup);
 };
 
 #endif

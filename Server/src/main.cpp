@@ -18,11 +18,5 @@ int main(int argc, char *argv[])
 		std::cout << e.what() << std::endl;
 	}
 
-	//CMessage mess{ "patati", "patatá", "oi pateta!" };
-
-	//CMessage::SMessage serial{ mess.serialize() };
-
-	//CMessage deserial{ CMessage::deserialize(serial) };
-
 	return 0;
 }

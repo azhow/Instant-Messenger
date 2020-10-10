@@ -5,11 +5,21 @@
 #include <exception>
 #include <algorithm>
 #include <fstream>
+#include <mutex>
+#include <memory>
+
+std::mutex g_diskMutex{ std::mutex() };
+std::mutex g_loginMutex{ std::mutex() };
 
 CServer::CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port) :
     m_nMessagesToRetrieve(numberOfMsgToRetrieve),
-    m_port(port)
+    m_port(port),
+    m_groupFolderPath{ std::filesystem::current_path() },
+    m_users{}
 {
+    // Groups folder
+    m_groupFolderPath.append("Groups");
+
     // Socket file descriptor
     m_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -30,7 +40,7 @@ CServer::CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port) :
 
     // Option value for option level
     int optionValue{ 0 };
-    
+
     // Set server socket to allow immediate reuse of the port
     if (setsockopt(m_serverSocket, SOL_SOCKET, SO_REUSEPORT, &optionValue, sizeof(int)) == 0)
     {
@@ -91,73 +101,67 @@ CServer::waitForConnections()
 void
 CServer::handleClientConnection(int clientSocket)
 {
-    // Login logic
-    // TODO need to be a separated method with more logic, such as the maximum number of sessions per user
+    try
     {
+        // Current user
+        const auto& [currentUser, currentGroupID]{ login(clientSocket) };
+        // Has the connection been closed?
         bool isConnectionClosed{ false };
 
-        // Read login message
-        const CMessage loginMessage{ CMessage::readMessageFromSocket(clientSocket, isConnectionClosed) };
-
-        // Check if group is already instantiated
-        if (auto groupIt{ m_groups->find(loginMessage.getGroupID()) };
-            groupIt == m_groups->end())
+        // Maybe we need to create a close message or timeout for the socket
+        while (!isConnectionClosed)
         {
-            // Add groupID to the map
-            m_groups->insert({ loginMessage.getGroupID(), std::vector<int>{} });
-        }
+            // Listen for incoming messages from user
+            // Read message header
+            const CMessage cReceivedMessage{ CMessage::readMessageFromSocket(clientSocket, isConnectionClosed) };
 
-        // Get last messages from disk
-        if (auto messageList{ retrieveLastNMessages(loginMessage.getGroupID()) }; !messageList.empty())
-        {
-            // Send all messages to the client
-            for (const auto& message : messageList)
+            if (!isConnectionClosed)
             {
-                message.sendMessageToSocket(clientSocket);
+                m_messageBuffer->push_back(cReceivedMessage);
+
+                // Broadcast message
+                for (const auto& user : m_groups->at(cReceivedMessage.getGroupID()))
+                {
+                    // Do not send message to who sent it
+                    if (user != clientSocket)
+                    {
+                        // Send message to client
+                        cReceivedMessage.sendMessageToSocket(user);
+                    }
+                }
+            }
+            else
+            {
+                // Send message of user logoff
+                const CMessage cBroadcastMessage{ currentUser->getUserID(), currentGroupID,
+                    currentUser->getUserID() + " has disconnected" };
+
+                // Broadcast message
+                for (const auto& user : m_groups->at(cBroadcastMessage.getGroupID()))
+                {
+                    // Do not send message to who sent it
+                    if (user != clientSocket)
+                    {
+                        // Send message to client
+                        cBroadcastMessage.sendMessageToSocket(user);
+                    }
+                }
             }
         }
 
-        // Register user into the group
-        m_groups->at(loginMessage.getGroupID()).push_back(clientSocket);
+        // Remove client from group
+        removeFromGroup(currentUser, currentGroupID);
 
-        // Braoadcast user login
-        const CMessage cBroadcastMessage{ loginMessage.getUserID(), loginMessage.getGroupID(),
-            loginMessage.getUserID() + " has connected" };
-
-        // Broadcast message
-        for (const auto& user : m_groups->at(cBroadcastMessage.getGroupID()))
-        {
-            // Send message to client
-            cBroadcastMessage.sendMessageToSocket(user);
-        }
+        // Close client socket
+        close(clientSocket);
     }
-
-    // Has the connection been closed?
-    bool isConnectionClosed{ false };
-
-    // Maybe we need to create a close message or timeout for the socket
-    while (!isConnectionClosed)
+    catch (const std::exception& exception)
     {
-        // Listen for incoming messages from user
-        // Read message header
-        const CMessage cReceivedMessage{ CMessage::readMessageFromSocket(clientSocket, isConnectionClosed) };
-
-        if (!isConnectionClosed)
-        {
-            // Broadcast message
-            for (const auto& user : m_groups->at(cReceivedMessage.getGroupID()))
-            {
-                // Send message to client
-                cReceivedMessage.sendMessageToSocket(user);
-            }
-        }
+        // Close client socket
+        close(clientSocket);
     }
 
-    // Remove client from group
-    // TODO
-
-    // Close client socket
-    close(clientSocket);
+    syncToDisk();
 }
 
 std::list<CMessage>
@@ -166,10 +170,8 @@ CServer::retrieveLastNMessages(const std::string& groupID) const
     // Last messages from group
     std::list<CMessage> lastNMessagesFromGroup{};
 
-    // Path to the group's file
-    std::filesystem::path groupFilePath{ std::filesystem::current_path() };
-    // Groups folder
-    groupFilePath.append("Groups");
+    // Group file
+    std::filesystem::path groupFilePath = m_groupFolderPath;
     groupFilePath.append(groupID + ".msg");
 
     // Search in the disk if there's an existing group file
@@ -201,4 +203,125 @@ CServer::retrieveLastNMessages(const std::string& groupID) const
     }
 
     return lastNMessagesFromGroup;
+}
+
+std::pair<std::shared_ptr<CUser>, std::string>
+CServer::login(int clientSocket)
+{
+    // Locks for login operation
+    std::lock_guard{ g_loginMutex };
+
+    // Connection closed?
+    bool isConnectionClosed{ false };
+
+    // Read login message
+    const CMessage loginMessage{ CMessage::readMessageFromSocket(clientSocket, isConnectionClosed) };
+
+    if (!isConnectionClosed)
+    {
+        std::runtime_error{ "Client closed connection during login" };
+    }
+
+    // Check if group is already instantiated
+    if (auto groupIt{ m_groups->find(loginMessage.getGroupID()) };
+        groupIt == m_groups->end())
+    {
+        // Add groupID to the map
+        m_groups->insert({ loginMessage.getGroupID(), std::vector<int>{} });
+    }
+
+    // Get last messages from disk
+    if (auto messageList{ retrieveLastNMessages(loginMessage.getGroupID()) }; !messageList.empty())
+    {
+        // Send all messages to the client
+        for (const auto& message : messageList)
+        {
+            message.sendMessageToSocket(clientSocket);
+        }
+    }
+
+    // Register user into the group
+    m_groups->at(loginMessage.getGroupID()).push_back(clientSocket);
+
+    // Current user
+    std::vector<std::shared_ptr<CUser>>::iterator currentUserIt{};
+
+    // If user is already logged on, we add a new session
+    if (auto it{ std::find_if(m_users.begin(), m_users.end(), [&](const auto& user) { return user->getUserID() == loginMessage.getUserID(); }) };
+        it != m_users.end())
+    {
+        (*it)->addToGroup(loginMessage.getGroupID(), clientSocket);
+        currentUserIt = it;
+    }
+    else
+    {
+        m_users.push_back(std::make_shared<CUser>(loginMessage.getUserID()));
+        currentUserIt = std::prev(m_users.end());
+        // If cannot add to group, then the user already has the maximum number of sessions
+        if (!(*currentUserIt)->addToGroup(loginMessage.getGroupID(), clientSocket))
+        {
+            throw std::runtime_error("Maximum number of sessions of users");
+        }
+    }
+
+    // Braoadcast user login
+    const CMessage cBroadcastMessage{ loginMessage.getUserID(), loginMessage.getGroupID(),
+        loginMessage.getUserID() + " has connected" };
+
+    // Broadcast message
+    for (const auto& user : m_groups->at(cBroadcastMessage.getGroupID()))
+    {
+        // Send message to client
+        cBroadcastMessage.sendMessageToSocket(user);
+    }
+
+    syncToDisk();
+
+    return { *currentUserIt, loginMessage.getGroupID() };
+}
+
+void
+CServer::syncToDisk()
+{
+    // Blocks thread
+    std::lock_guard<std::mutex> lock{ g_diskMutex };
+
+    // Begin of the messages
+    auto beginIt{ m_messageBuffer->begin() };
+    // End of the messages
+    auto endIt{ m_messageBuffer->end() };
+    for (auto it{ beginIt }; it != endIt; ++it)
+    {
+        // Group file
+        std::filesystem::path groupFilePath = m_groupFolderPath;
+        groupFilePath.append((*it).getGroupID() + ".msg");
+        // Open group file
+        std::ofstream groupFile(groupFilePath, std::ios::out | std::ios::binary | std::ios::app);
+
+        if (groupFile.good())
+        {
+            (*it).writeToDisk(groupFile);
+        }
+
+        groupFile.close();
+    }
+}
+
+void
+CServer::removeFromGroup(std::shared_ptr<CUser> currentUser, const std::string& currentGroup)
+{
+    // Locks for removal
+    std::lock_guard{ g_loginMutex };
+
+    // Begin of group vector
+    auto groupBeginIt{ m_groups->at(currentGroup).begin() };
+    // End of group vector
+    auto groupEndIt{ m_groups->at(currentGroup).end() };
+
+    // Remove from group
+    if (auto it{ std::find(groupBeginIt, groupEndIt, currentUser->removeSession(currentGroup)) };
+        it != groupEndIt)
+    {
+        m_groups->at(currentGroup).erase(it);
+    }
 }

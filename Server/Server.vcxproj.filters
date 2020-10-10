@@ -15,12 +15,18 @@
     <ClInclude Include="header\CGenericMonitor.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="header\CUser.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\CServer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CUser.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
