@@ -103,12 +103,12 @@ private:
         // Struct constructor
         SMessage(std::time_t timestamp, const std::string& userID,
             const std::string& groupID, const std::string& messageData) :
-            m_header{ SMessageHeader{timestamp, userID, groupID, messageData.size()+1} }
+            m_header{ SMessageHeader{timestamp, userID, groupID, messageData.size() + 1} }
         {
             // Allocate memory for the message data
             m_data = new char[m_header.m_messageSize];
             // Copy message to struct
-            strncpy(m_data, messageData.c_str(), m_header.m_messageSize);
+            strncpy(m_data, messageData.c_str(), messageData.size());
             m_data[messageData.size()] = '\0';
         }
 

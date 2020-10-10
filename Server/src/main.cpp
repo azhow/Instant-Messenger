@@ -5,17 +5,16 @@
 
 int main(int argc, char *argv[])
 {
-	try 
+	try
 	{
 		// Server object
-		CServer cServer{ 10 };
+		CServer cServer{ 10, 4020 };
 
 		// Wait for connections and handles them
 		cServer.waitForConnections();
 	}
-	catch (std::exception& e)
+	catch (const std::exception& e)
 	{
-		// Print exception message
 		std::cout << e.what() << std::endl;
 	}
 

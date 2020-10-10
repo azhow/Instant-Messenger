@@ -14,7 +14,7 @@
 
 #include "CMessage.h"
 
-#define PORT 4000
+#define PORT 4020
 
 int main(int argc, char* argv[])
 {

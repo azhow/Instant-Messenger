@@ -18,7 +18,7 @@ class CServer
 {
 public:
 	// Initializes server class
-	CServer(std::size_t numberOfMsgToRetrieve);
+	CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port);
 
 	// Class destructor
 	~CServer();

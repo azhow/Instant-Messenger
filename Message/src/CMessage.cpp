@@ -50,7 +50,7 @@ CMessage::sendLoginMessage(int serverSocketFD, const std::string& userID, const 
     CMessage::SMessage serialized{ loginMessage.serialize() };
 
     // Write message into the server socket
-    retVal = write(serverSocketFD, &serialized.m_header, sizeof(CMessage::SMessageHeader)) > 0;
+    retVal = write(serverSocketFD, &serialized.m_header, sizeof(SMessageHeader)) > 0;
 
     return retVal;
 }
@@ -65,7 +65,7 @@ CMessage::sendMessageToSocket(int socketFD) const
     SMessage serializedMessage{ serialize() };
 
     // Send message to client
-    retVal = write(socketFD, &serializedMessage.m_header, sizeof(CMessage::SMessageHeader)) > 0;
+    retVal = write(socketFD, &serializedMessage.m_header, sizeof(SMessageHeader)) > 0;
     retVal = retVal && (write(socketFD, serializedMessage.m_data, serializedMessage.m_header.m_messageSize) > 0);
 
     return retVal;
@@ -82,8 +82,13 @@ CMessage::readMessageFromSocket(int socketFD, bool& isConnectionClosed)
 
     // Parse message data
     SMessage message{ messageHeader };
-    isConnectionClosed = isConnectionClosed || (
-        read(socketFD, message.m_data, messageHeader.m_messageSize) == 0);
+
+    // If theres a message body to read we read it
+    if (message.m_header.m_messageSize > 1)
+    {
+        isConnectionClosed = isConnectionClosed || (
+            read(socketFD, message.m_data, messageHeader.m_messageSize) == 0);
+    }
 
     return deserialize(message);
 }
@@ -97,7 +102,7 @@ CMessage::writeToDisk(std::ofstream& outputFile) const
     // Serializes message
     CMessage::SMessage serializedMessage{ serialize() };
     // Read header
-    outputFile.write((char*)&serializedMessage, sizeof(CMessage::SMessageHeader));
+    outputFile.write((char*)&serializedMessage, sizeof(SMessageHeader));
     retVal = outputFile.good();
     // Read message data
     outputFile.write(serializedMessage.m_data, serializedMessage.m_header.m_messageSize);
@@ -123,6 +128,7 @@ CMessage::readMessageFromDisk(std::ifstream& inputFile)
 std::string 
 CMessage::getPrintableMessage() const
 {
+    // 
     std::string retVal{ "" };
 
     return retVal;

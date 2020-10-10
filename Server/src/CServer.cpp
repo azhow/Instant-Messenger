@@ -6,9 +6,9 @@
 #include <algorithm>
 #include <fstream>
 
-CServer::CServer(std::size_t numberOfMsgToRetrieve) :
+CServer::CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port) :
     m_nMessagesToRetrieve(numberOfMsgToRetrieve),
-    m_port(4000)
+    m_port(port)
 {
     // Socket file descriptor
     m_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -16,7 +16,7 @@ CServer::CServer(std::size_t numberOfMsgToRetrieve) :
     if (m_serverSocket == -1)
     {
         // Error
-        throw "Could not create server socket";
+        throw std::runtime_error("Could not create server socket");
     }
 
     // Server address struct
@@ -32,19 +32,19 @@ CServer::CServer(std::size_t numberOfMsgToRetrieve) :
     int optionValue{ 0 };
     
     // Set server socket to allow immediate reuse of the port
-    if (setsockopt(m_serverSocket, SOL_SOCKET, SO_REUSEADDR, &optionValue, sizeof(int)) == 0)
+    if (setsockopt(m_serverSocket, SOL_SOCKET, SO_REUSEPORT, &optionValue, sizeof(int)) == 0)
     {
         // Bind socket to address
         if (bind(m_serverSocket, (struct sockaddr*)&servAddr, sizeof(servAddr)) != 0)
         {
             // Error
-            throw "Could not bind server socket";
+            throw std::runtime_error("Could not bind server socket");
         }
     }
     else
     {
         // Error
-        throw "Could not set server socket options";
+        throw std::runtime_error("Could not set server socket options");
     }
 }
 
@@ -67,7 +67,7 @@ CServer::waitForConnections()
         if (listen(m_serverSocket, cConnectionQueueSize) != 0)
         {
             // Error
-            throw "Could not listen for new connections";
+            throw std::runtime_error("Could not listen for new connections");
         }
 
         // Client address to be read when accepting connection
@@ -80,7 +80,7 @@ CServer::waitForConnections()
         if (clientSocket == -1)
         {
             // Error
-            throw "Could not accept incoming connection";
+            throw std::runtime_error("Could not accept incoming connection");
         }
 
         // Create new handler thread for connection
