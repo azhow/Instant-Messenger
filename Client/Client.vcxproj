@@ -75,19 +75,25 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\CClient.cpp" />
+    <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Message\Message.vcxproj">
       <Project>{0ec0e6ec-7116-4123-bc2b-fedab962a342}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="header\CClient.h" />
+    <ClInclude Include="header\CGenericMonitor.h" />
+  </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>$(ProjectDir)/header/;$(SolutionDir)Message/header/;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
     <Link>
-      <LibraryDependencies>Message</LibraryDependencies>
+      <LibraryDependencies>Message;pthread</LibraryDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)Message/bin/$(Platform)/$(Configuration)/;%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
