@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string.h>
 #include <fstream>
+#include <future>
 
 class CMessage
 {
