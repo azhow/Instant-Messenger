@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 #include <chrono>
+#include <iomanip>
 
 CMessage::CMessage(const std::string& userID, const std::string& groupID, const std::string& messageData) :
     m_timestamp(std::chrono::seconds(std::time(NULL)).count()),
@@ -128,8 +129,15 @@ CMessage::readMessageFromDisk(std::ifstream& inputFile)
 std::string 
 CMessage::getPrintableMessage() const
 {
-    // 
-    std::string retVal{ "" };
+    // Printable string
+    std::string retVal{ "[" };
+
+    std::tm* t = localtime(&m_timestamp);
+    std::stringstream ss;
+    ss << std::put_time(t, "%Y-%m-%d %I:%M:%S %p");
+    retVal += ss.str();
+
+    retVal += "] " + m_userID + ": " + m_messageData;
 
     return retVal;
 }
