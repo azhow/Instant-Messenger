@@ -54,23 +54,20 @@ CClient::CClient(std::string userName, std::string groupName, std::string server
     CMessage::sendLoginMessage(m_clientSocket, m_userID, m_groupID);
 
     bool isConnectionClosed{ false };
-    while (!isConnectionClosed)
+    CMessage receivedMessage{ CMessage::readMessageFromSocket(m_clientSocket, isConnectionClosed) };
+    if (!isConnectionClosed)
     {
-        CMessage receivedMessage{ CMessage::readMessageFromSocket(m_clientSocket, isConnectionClosed) };
-        if (!isConnectionClosed)
-        {
-            std::cout << receivedMessage.getPrintableMessage() << std::endl;
-            std::cout << "========== END OF MESSAGE ==========" << std::endl;
-        }
-
+        std::cout << receivedMessage.getPrintableMessage() << std::endl;
+        std::cout << "========== END OF MESSAGE ==========" << std::endl;
+    }
 
         // Create new handler thread for reading/writing
-        m_writingThreads->push_back(std::thread(&CClient::handleClientWriting, this, m_clientSocket));
+        m_writingThreads->push_back(std::thread(&CClient::handleClientWriting, this, m_clientSocket, std::ref(isConnectionClosed)));
         handleClientReading(m_clientSocket, isConnectionClosed);
 
 
 
-    }
+
     ///* read from the socket */
     //n = read(sockfd, buffer, 256);
     //if (n < 0)
@@ -84,27 +81,31 @@ CClient::CClient(std::string userName, std::string groupName, std::string server
 void
 CClient::handleClientReading(int m_clientSocket, bool& isConnectionClosed) {
 
-
-
-    std::shared_future<CMessage> ret = std::async(&CMessage::readMessageFromSocket, m_clientSocket, std::ref(isConnectionClosed));
-
-    CMessage returnMessage = ret.get();
-    if (!isConnectionClosed)
+    while (!isConnectionClosed)
     {
-        std::cout << returnMessage.getPrintableMessage() << std::endl;
-    }
 
+        std::shared_future<CMessage> ret = std::async(&CMessage::readMessageFromSocket, m_clientSocket, std::ref(isConnectionClosed));
+
+
+        CMessage returnMessage = ret.get();
+        if (!isConnectionClosed)
+        {
+
+        std::cout << returnMessage.getPrintableMessage() << std::endl;
+        }
+    }
 
 }
 
 void
-CClient::handleClientWriting(int m_clientSocket) {
-
-    std::string messData;
-    std::getline(std::cin, messData);
-    CMessage message{ m_userID, m_groupID, messData };
-    message.sendMessageToSocket(m_clientSocket);
-
+CClient::handleClientWriting(int m_clientSocket, bool& isConnectionClosed) {
+    while (!isConnectionClosed)
+    {
+        std::string messData;
+        std::getline(std::cin, messData);
+        CMessage message{ m_userID, m_groupID, messData };
+        isConnectionClosed = isConnectionClosed || (message.sendMessageToSocket(m_clientSocket) == 0);
+    }
 }
 
 CClient::~CClient() {
