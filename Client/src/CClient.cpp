@@ -50,20 +50,22 @@ CClient::CClient(std::string userName, std::string groupName, std::string server
     }
 
 
+
     // Login in the server
     CMessage::sendLoginMessage(m_clientSocket, m_userID, m_groupID);
 
-    bool isConnectionClosed{ false };
-    CMessage receivedMessage{ CMessage::readMessageFromSocket(m_clientSocket, isConnectionClosed) };
-    if (!isConnectionClosed)
+    bool isConnectionClosed_w{ false };
+    bool isConnectionClosed_r{ false };
+    CMessage receivedMessage{ CMessage::readMessageFromSocket(m_clientSocket, isConnectionClosed_r) };
+    if (!isConnectionClosed_r)
     {
         std::cout << receivedMessage.getPrintableMessage() << std::endl;
         std::cout << "========== END OF MESSAGE ==========" << std::endl;
     }
 
         // Create new handler thread for reading/writing
-        m_writingThreads->push_back(std::thread(&CClient::handleClientWriting, this, m_clientSocket, std::ref(isConnectionClosed)));
-        handleClientReading(m_clientSocket, isConnectionClosed);
+        std::thread t(&CClient::handleClientWriting, this, m_clientSocket, std::ref(isConnectionClosed_w));
+        handleClientReading(m_clientSocket, isConnectionClosed_r);
 
 
 
@@ -89,10 +91,7 @@ CClient::handleClientReading(int m_clientSocket, bool& isConnectionClosed) {
 
         CMessage returnMessage = ret.get();
         if (!isConnectionClosed)
-        {
-
-        std::cout << returnMessage.getPrintableMessage() << std::endl;
-        }
+            std::cout << returnMessage.getPrintableMessage() << std::endl;
     }
 
 }
@@ -104,7 +103,14 @@ CClient::handleClientWriting(int m_clientSocket, bool& isConnectionClosed) {
         std::string messData;
         std::getline(std::cin, messData);
         CMessage message{ m_userID, m_groupID, messData };
-        isConnectionClosed = isConnectionClosed || (message.sendMessageToSocket(m_clientSocket) == 0);
+        if (!std::cin.eof())
+        {
+            if (messData != "")
+                isConnectionClosed = isConnectionClosed || (message.sendMessageToSocket(m_clientSocket) == 0);
+        }
+        else {
+            exit(0);
+        }
     }
 }
 
