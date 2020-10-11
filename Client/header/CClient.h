@@ -52,7 +52,7 @@ private:
 	void handleClientReading(int clientSocket, bool& isConnectionClosed);
 
 	// Handle client writing messages to server
-	void handleClientWriting(int clientSocket);
+	void handleClientWriting(int clientSocket, bool& isConnectionClosed);
 
 	// Save message buffer to disk
 	void syncToDisk();
