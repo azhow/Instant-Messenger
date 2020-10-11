@@ -7,6 +7,7 @@
 #include <fstream>
 #include <mutex>
 #include <memory>
+#include <netinet/tcp.h>
 
 std::mutex g_diskMutex{ std::mutex() };
 std::mutex g_loginMutex{ std::mutex() };
@@ -47,22 +48,52 @@ CServer::CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port) :
     bzero(&(servAddr.sin_zero), 8);
 
     // Option value for option level
-    int optionValue{ 0 };
+    const int cOptionValue{ 1 };
+
+    // Keep alive idle time before first check and keep alive time in seconds
+    const int cKeepAliveTime{ 60 };
 
     // Set server socket to allow immediate reuse of the port
-    if (setsockopt(m_serverSocket, SOL_SOCKET, SO_REUSEPORT, &optionValue, sizeof(int)) == 0)
+    if (setsockopt(m_serverSocket, SOL_SOCKET, SO_REUSEADDR, &cOptionValue, sizeof(int)) == 0)
     {
-        // Bind socket to address
-        if (bind(m_serverSocket, (struct sockaddr*)&servAddr, sizeof(servAddr)) != 0)
+        // Set keep alive
+        if (setsockopt(m_serverSocket, SOL_SOCKET, SO_KEEPALIVE, &cOptionValue, sizeof(int)) == 0)
+        {
+            // Set keep timer
+            if (setsockopt(m_serverSocket, SOL_TCP, TCP_KEEPIDLE, &cKeepAliveTime, sizeof(int)) == 0)
+            {
+                // Set keep alive
+                if (setsockopt(m_serverSocket, SOL_TCP, TCP_KEEPINTVL, &cKeepAliveTime, sizeof(int)) == 0)
+                {
+                    // Bind socket to address
+                    if (bind(m_serverSocket, (struct sockaddr*)&servAddr, sizeof(servAddr)) != 0)
+                    {
+                        // Error
+                        throw std::runtime_error("Could not bind server socket");
+                    }
+                }
+                else
+                {
+                    // Error
+                    throw std::runtime_error("Could not set keep alive timer server socket option");
+                }
+            }
+            else
+            {
+                // Error
+                throw std::runtime_error("Could not set idle time server socket option");
+            }
+        }
+        else
         {
             // Error
-            throw std::runtime_error("Could not bind server socket");
+            throw std::runtime_error("Could not set keep alive server socket option");
         }
     }
     else
     {
         // Error
-        throw std::runtime_error("Could not set server socket options");
+        throw std::runtime_error("Could not set reuse server socket option");
     }
 }
 
@@ -218,6 +249,18 @@ CServer::login(int clientSocket)
 {
     // Locks for login operation
     std::lock_guard{ g_loginMutex };
+
+    // True value
+    int optVal{ -1 };
+    // Options size in bytes
+    socklen_t cOptLen{ sizeof(int) };
+    
+    // Check the status for the keepalive option
+    if (auto retVal{ getsockopt(clientSocket, SOL_SOCKET, SO_KEEPALIVE, &optVal, &cOptLen) };
+        (optVal != 1) || (retVal < 0))
+    {
+        throw std::runtime_error("Client keep alive is not set");
+    }
 
     // Connection closed?
     bool isConnectionClosed{ false };
