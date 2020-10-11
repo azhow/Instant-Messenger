@@ -132,7 +132,7 @@ CMessage::getPrintableMessage() const
     // Printable string
     std::string retVal{ "[" };
 
-    std::tm* t = std::gmtime(&m_timestamp);
+    std::tm* t = localtime(&m_timestamp);
     std::stringstream ss;
     ss << std::put_time(t, "%Y-%m-%d %I:%M:%S %p");
     retVal += ss.str();
