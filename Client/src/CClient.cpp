@@ -65,8 +65,8 @@ CClient::CClient(std::string userName, std::string groupName, std::string server
 
 
         // Create new handler thread for reading/writing
-        /*m_readingThreads->push_back(*/handleClientReading(m_clientSocket, isConnectionClosed);
-        /*m_writingThreads->push_back(*/std::thread(&CClient::handleClientWriting, this, m_clientSocket);
+        m_writingThreads->push_back(std::thread(&CClient::handleClientWriting, this, m_clientSocket));
+        handleClientReading(m_clientSocket, isConnectionClosed);
 
 
 
