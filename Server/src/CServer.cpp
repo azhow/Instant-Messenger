@@ -19,6 +19,14 @@ CServer::CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port) :
 {
     // Groups folder
     m_groupFolderPath.append("Groups");
+    // If group folder does not exist, we should create it
+    if (!std::filesystem::exists(m_groupFolderPath))
+    {
+        if (!std::filesystem::create_directory(m_groupFolderPath))
+        {
+            throw std::runtime_error("Could not create group folder");
+        }
+    }
 
     // Socket file descriptor
     m_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -133,7 +141,7 @@ CServer::handleClientConnection(int clientSocket)
             else
             {
                 // Send message of user logoff
-                const CMessage cBroadcastMessage{ currentUser->getUserID(), currentGroupID,
+                const CMessage cBroadcastMessage{ "Server", currentGroupID,
                     currentUser->getUserID() + " has disconnected" };
 
                 // Broadcast message
@@ -265,7 +273,7 @@ CServer::login(int clientSocket)
     }
 
     // Braoadcast user login
-    const CMessage cBroadcastMessage{ loginMessage.getUserID(), loginMessage.getGroupID(),
+    const CMessage cBroadcastMessage{ "Server", loginMessage.getGroupID(),
         loginMessage.getUserID() + " has connected" };
 
     // Broadcast message
@@ -305,6 +313,8 @@ CServer::syncToDisk()
 
         groupFile.close();
     }
+    // Remove all messages from buffer
+    m_messageBuffer->clear();
 }
 
 void

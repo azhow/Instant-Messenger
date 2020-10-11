@@ -59,7 +59,7 @@ CClient::CClient(std::string userName, std::string groupName, std::string server
         CMessage receivedMessage{ CMessage::readMessageFromSocket(m_clientSocket, isConnectionClosed) };
         if (!isConnectionClosed)
         {
-            std::cout << receivedMessage.getMessageData() << std::endl;
+            std::cout << receivedMessage.getPrintableMessage() << std::endl;
             std::cout << "========== END OF MESSAGE ==========" << std::endl;
         }
 
@@ -91,7 +91,7 @@ CClient::handleClientReading(int m_clientSocket, bool& isConnectionClosed) {
     CMessage returnMessage = ret.get();
     if (!isConnectionClosed)
     {
-        std::cout << returnMessage.getMessageData() << std::endl;
+        std::cout << returnMessage.getPrintableMessage() << std::endl;
     }
 
 
