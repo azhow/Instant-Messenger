@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <chrono>
 #include <iomanip>
+#include <mutex>
 
 CMessage::CMessage(const std::string& userID, const std::string& groupID, const std::string& messageData) :
     m_timestamp(std::chrono::seconds(std::time(NULL)).count()),
@@ -36,8 +37,17 @@ CMessage::serialize() const
 CMessage
 CMessage::deserialize(const CMessage::SMessage& message)
 {
+    // Message data
+    std::string messageData{ "" };
+
+    // Check content
+    if (message.m_data != nullptr)
+    {
+        messageData = std::string{ message.m_data };
+    }
+
     return CMessage(message.m_header.m_timestamp, message.m_header.m_userID,
-        message.m_header.m_groupID, message.m_data);
+        message.m_header.m_groupID, messageData);
 }
 
 bool
@@ -82,16 +92,16 @@ CMessage::readMessageFromSocket(int socketFD, bool& isConnectionClosed)
     isConnectionClosed = read(socketFD, &messageHeader, sizeof(SMessageHeader)) == 0;
 
     // Parse message data
-    SMessage message{ messageHeader };
+    SMessage readMessage{ messageHeader };
 
     // If theres a message body to read we read it
-    if (message.m_header.m_messageSize > 1)
+    if (readMessage.m_header.m_messageSize > 1)
     {
         isConnectionClosed = isConnectionClosed || (
-            read(socketFD, message.m_data, messageHeader.m_messageSize) == 0);
+            read(socketFD, readMessage.m_data, messageHeader.m_messageSize) == 0);
     }
 
-    return deserialize(message);
+    return deserialize(readMessage);
 }
 
 bool
@@ -121,12 +131,12 @@ CMessage::readMessageFromDisk(std::ifstream& inputFile)
     // Then create the message and read the message data
     SMessage message{ header };
     inputFile.read(message.m_data, header.m_messageSize);
-    
+
     // Deserialize message
     return deserialize(message);
 }
 
-std::string 
+std::string
 CMessage::getPrintableMessage() const
 {
     // Printable string

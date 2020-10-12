@@ -5,12 +5,14 @@
 #include <exception>
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <mutex>
 #include <memory>
 #include <netinet/tcp.h>
 
 std::mutex g_diskMutex{ std::mutex() };
 std::mutex g_loginMutex{ std::mutex() };
+std::mutex g_broadcastMutex{ std::mutex() };
 
 CServer::CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port) :
     m_nMessagesToRetrieve(numberOfMsgToRetrieve),
@@ -95,6 +97,9 @@ CServer::CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port) :
         // Error
         throw std::runtime_error("Could not set reuse server socket option");
     }
+
+    std::cout << "[INFO] Starting server in port: " + std::to_string(m_port) + " address: "
+        + std::to_string(INADDR_ANY) << std::endl;
 }
 
 CServer::~CServer()
@@ -158,16 +163,7 @@ CServer::handleClientConnection(int clientSocket)
             {
                 m_messageBuffer->push_back(cReceivedMessage);
 
-                // Broadcast message
-                for (const auto& user : m_groups->at(cReceivedMessage.getGroupID()))
-                {
-                    // Do not send message to who sent it
-                    if (user != clientSocket)
-                    {
-                        // Send message to client
-                        cReceivedMessage.sendMessageToSocket(user);
-                    }
-                }
+                broadcastMessage(clientSocket, cReceivedMessage);
             }
             else
             {
@@ -175,16 +171,10 @@ CServer::handleClientConnection(int clientSocket)
                 const CMessage cBroadcastMessage{ "Server", currentGroupID,
                     currentUser->getUserID() + " has disconnected" };
 
-                // Broadcast message
-                for (const auto& user : m_groups->at(cBroadcastMessage.getGroupID()))
-                {
-                    // Do not send message to who sent it
-                    if (user != clientSocket)
-                    {
-                        // Send message to client
-                        cBroadcastMessage.sendMessageToSocket(user);
-                    }
-                }
+                // Print info on server
+                std::cout << "[INFO] " + currentUser->getUserID() + " has disconnected" << std::endl;
+
+                broadcastMessage(clientSocket, cBroadcastMessage);
             }
         }
 
@@ -248,7 +238,7 @@ std::pair<std::shared_ptr<CUser>, std::string>
 CServer::login(int clientSocket)
 {
     // Locks for login operation
-    std::lock_guard{ g_loginMutex };
+    std::lock_guard lock{ g_loginMutex };
 
     // True value
     int optVal{ -1 };
@@ -319,12 +309,10 @@ CServer::login(int clientSocket)
     const CMessage cBroadcastMessage{ "Server", loginMessage.getGroupID(),
         loginMessage.getUserID() + " has connected" };
 
-    // Broadcast message
-    for (const auto& user : m_groups->at(cBroadcastMessage.getGroupID()))
-    {
-        // Send message to client
-        cBroadcastMessage.sendMessageToSocket(user);
-    }
+    // Print info on server
+    std::cout << "[INFO] " + loginMessage.getUserID() + " has connected" << std::endl;
+
+    broadcastMessage(clientSocket, cBroadcastMessage, true);
 
     syncToDisk();
 
@@ -364,7 +352,7 @@ void
 CServer::removeFromGroup(std::shared_ptr<CUser> currentUser, const std::string& currentGroup)
 {
     // Locks for removal
-    std::lock_guard{ g_loginMutex };
+    std::lock_guard lock{ g_loginMutex };
 
     // Begin of group vector
     auto groupBeginIt{ m_groups->at(currentGroup).begin() };
@@ -376,5 +364,23 @@ CServer::removeFromGroup(std::shared_ptr<CUser> currentUser, const std::string& 
         it != groupEndIt)
     {
         m_groups->at(currentGroup).erase(it);
+    }
+}
+
+void 
+CServer::broadcastMessage(int sendingClientSocket, const CMessage& message, bool sendToSendingClient)
+{
+    // Locks for broadcast operation
+    std::lock_guard lock{ g_broadcastMutex };
+
+    // Broadcast message
+    for (const auto& user : m_groups->at(message.getGroupID()))
+    {
+        // Do not send message to who sent it
+        if ((user != sendingClientSocket) || sendToSendingClient)
+        {
+            // Send message to client
+            message.sendMessageToSocket(user);
+        }
     }
 }

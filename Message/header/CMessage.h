@@ -112,14 +112,18 @@ private:
 
         // Struct constructor
         SMessage(SMessageHeader& header) :
-            m_header(header)
+            m_header(header),
+            m_data(nullptr)
         {
-            // Allocate memory for the message data
-            m_data = new char[m_header.m_messageSize];
+            if (m_header.m_messageSize >= 1)
+            {
+                // Allocate memory for the message data
+                m_data = new char[m_header.m_messageSize];
+            }
         }
 
         // Struct destructor (deallocates string data)
-        ~SMessage() { delete[] m_data; }
+        ~SMessage() { if (m_data != nullptr) delete[] m_data; }
     };
 
     // Serialize

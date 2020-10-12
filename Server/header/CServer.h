@@ -66,6 +66,9 @@ private:
 
 	// Removes user from a group
 	void removeFromGroup(std::shared_ptr<CUser> currentUser, const std::string& currentGroup);
+
+	// Broadcast message to other users
+	void broadcastMessage(int sendingClientSocket, const CMessage& message, bool sendToSendingClient = false);
 };
 
 #endif
