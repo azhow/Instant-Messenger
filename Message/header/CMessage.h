@@ -44,6 +44,9 @@ public:
     // Get groupID
     inline std::string getGroupID() const { return m_groupID; };
 
+    //Get messData
+    inline std::string getmessData() const { return m_messageData; };
+
     // Transform message into a printable pretty using timestamp, userID and messageData as a string
     std::string getPrintableMessage() const;
 
