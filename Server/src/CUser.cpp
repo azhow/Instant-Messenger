@@ -28,7 +28,7 @@ CUser::removeSession(const std::string& groupID)
     std::lock_guard{ g_userLock };
 
     // Return value
-    int retVal;
+    int retVal{ -1 };
 
     auto beginIt{ m_sessions.begin() };
     auto endIt{ m_sessions.end() };

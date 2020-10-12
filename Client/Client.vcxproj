@@ -102,7 +102,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)/header/;$(SolutionDir)Message/header/;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <LibraryDependencies>Message</LibraryDependencies>
+      <LibraryDependencies>Message;pthread</LibraryDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)Message/bin/$(Platform)/$(Configuration)/;%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
