@@ -85,7 +85,6 @@ CClient::CClient(std::string userName, std::string groupName, std::string server
     if (!isConnectionClosed_r)
     {
         std::cout << receivedMessage.getPrintableMessage() << std::endl;
-        std::cout << "========== END OF MESSAGE ==========" << std::endl;
     }
 
     // Create new handler thread for reading/writing
@@ -105,6 +104,10 @@ CClient::handleClientReading(int m_clientSocket, bool& isConnectionClosed) {
         CMessage returnMessage = ret.get();
         if (!isConnectionClosed)
             std::cout << returnMessage.getPrintableMessage() << std::endl;
+        else {
+            close(m_clientSocket);
+            exit(0);
+        }
     }
 
 }
@@ -122,6 +125,7 @@ CClient::handleClientWriting(int m_clientSocket, bool& isConnectionClosed) {
                 isConnectionClosed = isConnectionClosed || (message.sendMessageToSocket(m_clientSocket) == 0);
         }
         else {
+            close(m_clientSocket);
             exit(0);
         }
     }
