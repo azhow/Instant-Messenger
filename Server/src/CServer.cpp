@@ -271,6 +271,8 @@ CServer::login(int clientSocket)
         m_groups->insert({ loginMessage.getGroupID(), std::vector<int>{} });
     }
 
+    syncToDisk();
+
     // Get last messages from disk
     if (auto messageList{ retrieveLastNMessages(loginMessage.getGroupID()) }; !messageList.empty())
     {
@@ -313,8 +315,6 @@ CServer::login(int clientSocket)
     std::cout << "[INFO] " + loginMessage.getUserID() + " has connected" << std::endl;
 
     broadcastMessage(clientSocket, cBroadcastMessage, true);
-
-    syncToDisk();
 
     return { *currentUserIt, loginMessage.getGroupID() };
 }
