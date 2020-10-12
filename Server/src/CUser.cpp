@@ -12,7 +12,7 @@ CUser::addToGroup(const std::string& groupID, int socketFD)
     // If could add to group
     bool retVal{ false };
 
-    if (m_sessions.size() < 3)
+    if (m_sessions.size() < 2)
     {
         m_sessions.push_back({ groupID, socketFD });
         retVal = true;

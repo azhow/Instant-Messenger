@@ -13,6 +13,7 @@
 std::mutex g_diskMutex{ std::mutex() };
 std::mutex g_loginMutex{ std::mutex() };
 std::mutex g_broadcastMutex{ std::mutex() };
+std::mutex g_groupMutex{ std::mutex() };
 
 CServer::CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port) :
     m_nMessagesToRetrieve(numberOfMsgToRetrieve),
@@ -271,9 +272,6 @@ CServer::login(int clientSocket)
         m_groups->insert({ loginMessage.getGroupID(), std::vector<int>{} });
     }
 
-    // Register user into the group
-    m_groups->at(loginMessage.getGroupID()).push_back(clientSocket);
-
     // Current user
     std::vector<std::shared_ptr<CUser>>::iterator currentUserIt{};
 
@@ -285,9 +283,12 @@ CServer::login(int clientSocket)
         // If cannot add to group, then the user already has the maximum number of sessions
         if (!(*currentUserIt)->addToGroup(loginMessage.getGroupID(), clientSocket))
         {
-            // Remove user from group
-            removeFromGroup(*currentUserIt, loginMessage.getGroupID());
             throw std::runtime_error("Maximum number of sessions for user user: " + loginMessage.getUserID());
+        }
+        else
+        {
+            // Register user into the group
+            m_groups->at(loginMessage.getGroupID()).push_back(clientSocket);
         }
     }
     else
@@ -295,6 +296,8 @@ CServer::login(int clientSocket)
         m_users.push_back(std::make_shared<CUser>(loginMessage.getUserID()));
         currentUserIt = std::prev(m_users.end());
         (*currentUserIt)->addToGroup(loginMessage.getGroupID(), clientSocket);
+        // Register user into the group
+        m_groups->at(loginMessage.getGroupID()).push_back(clientSocket);
     }
 
     syncToDisk();
@@ -356,7 +359,7 @@ void
 CServer::removeFromGroup(std::shared_ptr<CUser> currentUser, const std::string& currentGroup)
 {
     // Locks for removal
-    std::lock_guard lock{ g_loginMutex };
+    std::lock_guard lock{ g_groupMutex };
 
     // Begin of group vector
     auto groupBeginIt{ m_groups->at(currentGroup).begin() };
