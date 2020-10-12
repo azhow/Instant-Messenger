@@ -271,18 +271,6 @@ CServer::login(int clientSocket)
         m_groups->insert({ loginMessage.getGroupID(), std::vector<int>{} });
     }
 
-    syncToDisk();
-
-    // Get last messages from disk
-    if (auto messageList{ retrieveLastNMessages(loginMessage.getGroupID()) }; !messageList.empty())
-    {
-        // Send all messages to the client
-        for (const auto& message : messageList)
-        {
-            message.sendMessageToSocket(clientSocket);
-        }
-    }
-
     // Register user into the group
     m_groups->at(loginMessage.getGroupID()).push_back(clientSocket);
 
@@ -293,17 +281,31 @@ CServer::login(int clientSocket)
     if (auto it{ std::find_if(m_users.begin(), m_users.end(), [&](const auto& user) { return user->getUserID() == loginMessage.getUserID(); }) };
         it != m_users.end())
     {
-        (*it)->addToGroup(loginMessage.getGroupID(), clientSocket);
         currentUserIt = it;
+        // If cannot add to group, then the user already has the maximum number of sessions
+        if (!(*currentUserIt)->addToGroup(loginMessage.getGroupID(), clientSocket))
+        {
+            // Remove user from group
+            removeFromGroup(*currentUserIt, loginMessage.getGroupID());
+            throw std::runtime_error("Maximum number of sessions for user user: " + loginMessage.getUserID());
+        }
     }
     else
     {
         m_users.push_back(std::make_shared<CUser>(loginMessage.getUserID()));
         currentUserIt = std::prev(m_users.end());
-        // If cannot add to group, then the user already has the maximum number of sessions
-        if (!(*currentUserIt)->addToGroup(loginMessage.getGroupID(), clientSocket))
+        (*currentUserIt)->addToGroup(loginMessage.getGroupID(), clientSocket);
+    }
+
+    syncToDisk();
+
+    // Get last messages from disk
+    if (auto messageList{ retrieveLastNMessages(loginMessage.getGroupID()) }; !messageList.empty())
+    {
+        // Send all messages to the client
+        for (const auto& message : messageList)
         {
-            throw std::runtime_error("Maximum number of sessions of users");
+            message.sendMessageToSocket(clientSocket);
         }
     }
 
