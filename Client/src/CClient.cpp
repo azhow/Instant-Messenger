@@ -17,10 +17,10 @@
 #include <algorithm>
 #include <fstream>
 #include <thread>
+#include <netinet/tcp.h>
 
-CClient::CClient(std::string userName, std::string groupName, std::string server_ip_addr, std::uint16_t port) {
-
-
+CClient::CClient(std::string userName, std::string groupName, std::string server_ip_addr, std::uint16_t port) 
+{
     m_port = port;
     m_userID = userName;
     m_groupID = groupName;
@@ -37,6 +37,33 @@ CClient::CClient(std::string userName, std::string groupName, std::string server
     if ((m_clientSocket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
         printf("ERROR opening socket\n");
 
+    // Option value for option level
+    const int cOptionValue{ 1 };
+
+    // Keep alive idle time before first check and keep alive time in seconds
+    const int cKeepAliveTime{ 60 };
+
+    // Set keep alive
+    if (setsockopt(m_clientSocket, SOL_SOCKET, SO_KEEPALIVE, &cOptionValue, sizeof(int)) == 0)
+    {
+        // Set keep timer
+        if (setsockopt(m_clientSocket, SOL_TCP, TCP_KEEPIDLE, &cKeepAliveTime, sizeof(int)) == 0)
+        {
+            // Set keep alive
+            if (setsockopt(m_clientSocket, SOL_TCP, TCP_KEEPINTVL, &cKeepAliveTime, sizeof(int)) != 0)
+            {
+                printf("ERROR seting KEEPINTVL\n");
+            }
+        }
+        else
+        {
+            printf("ERROR seting KEEPIDLE\n");
+        }
+    }
+    else
+    {
+        printf("ERROR seting KEEPALIVE\n");
+    }
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(m_port);
@@ -48,8 +75,6 @@ CClient::CClient(std::string userName, std::string groupName, std::string server
         printf("ERROR connecting\n");
         printf("%d\n", errno);
     }
-
-
 
     // Login in the server
     CMessage::sendLoginMessage(m_clientSocket, m_userID, m_groupID);
@@ -63,19 +88,9 @@ CClient::CClient(std::string userName, std::string groupName, std::string server
         std::cout << "========== END OF MESSAGE ==========" << std::endl;
     }
 
-        // Create new handler thread for reading/writing
-        std::thread t(&CClient::handleClientWriting, this, m_clientSocket, std::ref(isConnectionClosed_w));
-        handleClientReading(m_clientSocket, isConnectionClosed_r);
-
-
-
-
-    ///* read from the socket */
-    //n = read(sockfd, buffer, 256);
-    //if (n < 0)
-    //    printf("ERROR reading from socket\n");
-
-    //printf("%s\n", buffer);
+    // Create new handler thread for reading/writing
+    std::thread t(&CClient::handleClientWriting, this, m_clientSocket, std::ref(isConnectionClosed_w));
+    handleClientReading(m_clientSocket, isConnectionClosed_r);
 
     close(m_clientSocket);
 }
@@ -85,9 +100,7 @@ CClient::handleClientReading(int m_clientSocket, bool& isConnectionClosed) {
 
     while (!isConnectionClosed)
     {
-
         std::shared_future<CMessage> ret = std::async(&CMessage::readMessageFromSocket, m_clientSocket, std::ref(isConnectionClosed));
-
 
         CMessage returnMessage = ret.get();
         if (!isConnectionClosed)
