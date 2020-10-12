@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 	try
 	{
 		// Server object
-		CServer cServer{ 10, 6969 };
+		CServer cServer{ 5, 6969 };
 
 		// Wait for connections and handles them
 		cServer.waitForConnections();

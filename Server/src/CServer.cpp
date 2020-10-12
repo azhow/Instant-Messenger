@@ -306,7 +306,7 @@ CServer::login(int clientSocket)
         for (const auto& message : messageList)
         {
             // Sleep between messages to avoid bombing the client socket
-            usleep(100000);
+            usleep(50000);
             message.sendMessageToSocket(clientSocket);
         }
     }
