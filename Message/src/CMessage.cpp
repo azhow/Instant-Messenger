@@ -3,7 +3,10 @@
 #include <unistd.h>
 #include <chrono>
 #include <iomanip>
+#include <algorithm>
 #include <mutex>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 CMessage::CMessage(const std::string& userID, const std::string& groupID, const std::string& messageData) :
     m_timestamp(std::chrono::seconds(std::time(NULL)).count()),
@@ -67,17 +70,52 @@ CMessage::sendLoginMessage(int serverSocketFD, const std::string& userID, const 
 }
 
 bool
-CMessage::sendMessageToSocket(int socketFD) const
+CMessage::sendMessageToSocket(int socketFD, std::size_t sendBufferSize) const
 {
     // Return value
     bool retVal{ false };
 
-    // This message serialized
-    SMessage serializedMessage{ serialize() };
+    // Receive buffer size
+    std::size_t receiveBufferSize;
+    // Size of size_t type
+    unsigned int sizeOfSizeT{ sizeof(std::size_t) };
+    // Read buffer size from socket
+    if (getsockopt(socketFD, SOL_SOCKET, SO_RCVBUF, (void*)&receiveBufferSize, &sizeOfSizeT) == 0)
+    {
+        // This message serialized
+        SMessage serializedMessage{ serialize() };
+        // Split message if bigger than this
+        std::size_t splitSize{ std::min(receiveBufferSize, sendBufferSize) };
 
-    // Send message to client
-    retVal = write(socketFD, &serializedMessage.m_header, sizeof(SMessageHeader)) > 0;
-    retVal = retVal && (write(socketFD, serializedMessage.m_data, serializedMessage.m_header.m_messageSize) > 0);
+        // Message header is always smaller than the buffer size
+        retVal = write(socketFD, &serializedMessage.m_header, sizeof(SMessageHeader)) > 0;
+
+        if (serializedMessage.m_header.m_messageSize > splitSize)
+        {
+            std::size_t sentBytes{ 0 };
+            std::size_t splitNum{ 0 };
+            std::size_t bytesToSend{ serializedMessage.m_header.m_messageSize };
+            while (sentBytes < serializedMessage.m_header.m_messageSize)
+            {
+                // Number of bytes that will be sent on this split
+                std::size_t numBytesToSendThisIteration{ 0 };
+                (bytesToSend < splitSize) ? numBytesToSendThisIteration = bytesToSend : numBytesToSendThisIteration = splitSize;
+                sentBytes += write(socketFD, serializedMessage.m_data, numBytesToSendThisIteration);
+                bytesToSend -= numBytesToSendThisIteration;
+                // Couldn`t send bytes
+                if (sentBytes < 0)
+                {
+                    retVal = false;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            // Message smaller than buffers then its ok
+            retVal = retVal && (write(socketFD, serializedMessage.m_data, serializedMessage.m_header.m_messageSize) > 0);
+        }
+    }
 
     return retVal;
 }
@@ -88,8 +126,16 @@ CMessage::readMessageFromSocket(int socketFD, bool& isConnectionClosed)
     // Message header from received message
     SMessageHeader messageHeader;
 
+    // Number of bytes read
+    auto bytesRead = read(socketFD, &messageHeader, sizeof(SMessageHeader));
+    isConnectionClosed = bytesRead == 0;
+
     // Read message header
-    isConnectionClosed = read(socketFD, &messageHeader, sizeof(SMessageHeader)) == 0;
+    while ((bytesRead != sizeof(SMessageHeader)) && (bytesRead > 0))
+    {
+        bytesRead += read(socketFD, &messageHeader, sizeof(SMessageHeader) - bytesRead);
+        isConnectionClosed = bytesRead == 0;
+    }
 
     // Parse message data
     SMessage readMessage{ messageHeader };
@@ -97,8 +143,13 @@ CMessage::readMessageFromSocket(int socketFD, bool& isConnectionClosed)
     // If theres a message body to read we read it
     if (readMessage.m_header.m_messageSize > 1)
     {
-        isConnectionClosed = isConnectionClosed || (
-            read(socketFD, readMessage.m_data, messageHeader.m_messageSize) == 0);
+        bytesRead = read(socketFD, readMessage.m_data, messageHeader.m_messageSize);
+        
+        while ((bytesRead != messageHeader.m_messageSize) && (bytesRead > 0))
+        {
+            bytesRead += read(socketFD, &messageHeader, messageHeader.m_messageSize - bytesRead);
+            isConnectionClosed = bytesRead == 0;
+        }
     }
 
     return deserialize(readMessage);

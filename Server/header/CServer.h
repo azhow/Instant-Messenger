@@ -21,6 +21,12 @@ public:
 	// Initializes server class
 	CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port);
 
+	CServer(const CServer&) = delete;
+
+	CServer& operator=(const CServer&) = delete;
+
+	CServer(CServer&&) = delete;
+
 	// Class destructor
 	~CServer();
 
@@ -39,6 +45,12 @@ private:
 
 	// Group folder path
 	std::filesystem::path m_groupFolderPath;
+
+	// Server receive buffer size
+	std::size_t m_receiveBufferSize;
+
+	// Server send buffer size
+	std::size_t m_sendBufferSize;
 
 	// Threads handling client connections (it needs to be a monitor to avoid data race condition)
 	CGenericMonitor<std::vector<std::thread>> m_handlerThreads;

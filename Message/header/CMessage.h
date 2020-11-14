@@ -24,7 +24,7 @@ public:
     static bool sendLoginMessage(int serverSocketFD, const std::string& userID, const std::string& groupID);
 
     // Send message to socket
-    bool sendMessageToSocket(int socketFD) const;
+    bool sendMessageToSocket(int socketFD, std::size_t sendBufferSize) const;
 
     // Read message from socket
     static CMessage readMessageFromSocket(int socketFD, bool& isConnectionClosed);

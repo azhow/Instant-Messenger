@@ -38,6 +38,9 @@ private:
 	// Client port
 	std::uint16_t m_port;
 
+	// Send buffer size
+	std::size_t m_sendBufferSize;
+
 	// Threads handling client read/write (it needs to be a monitor to avoid data race condition)
 	CGenericMonitor<std::vector<std::thread>> m_readingThreads;
 	CGenericMonitor<std::vector<std::thread>> m_writingThreads;

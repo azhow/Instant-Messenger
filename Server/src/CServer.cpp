@@ -35,6 +35,14 @@ CServer::CServer(std::size_t numberOfMsgToRetrieve, std::uint16_t port) :
     // Socket file descriptor
     m_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
+    // Sizeof size t
+    unsigned int sizeOfSizeT{ sizeof(std::size_t) };
+
+    // Get receive buffer size
+    getsockopt(m_serverSocket, SOL_SOCKET, SO_RCVBUF, (void*)&m_receiveBufferSize, &sizeOfSizeT);
+    // Get send buffer size
+    getsockopt(m_serverSocket, SOL_SOCKET, SO_SNDBUF, (void*)&m_sendBufferSize, &sizeOfSizeT);
+
     if (m_serverSocket == -1)
     {
         // Error
@@ -310,7 +318,7 @@ CServer::login(int clientSocket)
         {
             // Sleep between messages to avoid bombing the client socket
             usleep(50000);
-            message.sendMessageToSocket(clientSocket);
+            message.sendMessageToSocket(clientSocket, m_sendBufferSize);
         }
     }
 
@@ -387,7 +395,7 @@ CServer::broadcastMessage(int sendingClientSocket, const CMessage& message, bool
         if ((user != sendingClientSocket) || sendToSendingClient)
         {
             // Send message to client
-            message.sendMessageToSocket(user);
+            message.sendMessageToSocket(user, m_sendBufferSize);
         }
     }
 }

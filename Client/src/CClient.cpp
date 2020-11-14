@@ -43,6 +43,13 @@ CClient::CClient(std::string userName, std::string groupName, std::string server
     // Keep alive idle time before first check and keep alive time in seconds
     const int cKeepAliveTime{ 60 };
 
+    // Sizeof size t
+    unsigned int sizeOfSizeT{ sizeof(std::size_t) };
+
+    // Get send buffer size
+    m_sendBufferSize = 0;
+    getsockopt(m_clientSocket, SOL_SOCKET, SO_SNDBUF, (void*)&m_sendBufferSize, &sizeOfSizeT);
+
     // Set keep alive
     if (setsockopt(m_clientSocket, SOL_SOCKET, SO_KEEPALIVE, &cOptionValue, sizeof(int)) == 0)
     {
@@ -122,7 +129,7 @@ CClient::handleClientWriting(int m_clientSocket, bool& isConnectionClosed) {
         if (!std::cin.eof())
         {
             if (messData != "")
-                isConnectionClosed = isConnectionClosed || (message.sendMessageToSocket(m_clientSocket) == 0);
+                isConnectionClosed = isConnectionClosed || (message.sendMessageToSocket(m_clientSocket, m_sendBufferSize) == 0);
         }
         else {
             close(m_clientSocket);
